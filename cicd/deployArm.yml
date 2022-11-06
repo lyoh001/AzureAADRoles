@@ -1,0 +1,50 @@
+name: Azure Bicep
+on: [push]
+
+env:
+  AZURE_SUBSCRIPTION: ""
+  AZURE_REGION: ""
+  AZURE_RESOURCEGROUP: ""
+  AZURE_MONITOR_RESOURCEGROUP: ""
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout GitHub Action
+      uses: actions/checkout@main
+
+    - name: Install Bicep CLI
+      run: |
+        curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+        chmod +x ./bicep
+        sudo mv ./bicep /usr/local/bin/bicep
+        bicep --help
+    - name: Build Bicep Artifacts
+      run: |
+        bicep build ./azuredeploy.bicep
+        bicep build ./azuremonitordeploy.bicep
+    - name: Run Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        allow-no-subscriptions: true
+
+    - name: Run Azure Resource RG Deploy
+      uses: azure/arm-deploy@v1
+      with:
+        scope: subscription
+        subscriptionId: ${{ env.AZURE_SUBSCRIPTION }}
+        region: ${{ env.AZURE_REGION }}
+        template: ./azurergdeploy.json
+        parameters:
+          rgName=${{ env.AZURE_RESOURCEGROUP }}
+          rgLocation=${{ env.AZURE_REGION }}
+
+    - name: Run Azure Resource Deploy
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ env.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.AZURE_RESOURCEGROUP }}
+        template: ./azuredeploy.json

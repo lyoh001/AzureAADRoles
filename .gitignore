@@ -1,0 +1,7 @@
+.venv
+.vscode
+.env
+.funcignore
+.gitignore
+__pycache__
+local.settings.json
